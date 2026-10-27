@@ -45,22 +45,22 @@ function ReportPage() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const parsed = schema.safeParse(Object.fromEntries(fd));
-    if (!parsed.success) return toast.error(parsed.error.issues[0].message);
+    if (!parsed.success) return void toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
     const files = (fd.getAll("files") as File[]).filter((f) => f.size > 0);
-    if (files.length > 5) return toast.error("Attach at most 5 files.");
+    if (files.length > 5) return void toast.error("Attach at most 5 files.");
     for (const f of files) {
       const err = validateEvidenceFile(f);
-      if (err) return toast.error(`${f.name}: ${err}`);
+      if (err) return void toast.error(`${f.name}: ${err}`);
     }
     setBusy(true);
     const { data: c, error } = await supabase
       .from("complaints")
-      .insert({ ...parsed.data, citizen_id: user.id })
+      .insert({ ...parsed.data, location_detail: parsed.data.location_detail || null, citizen_id: user.id })
       .select("id, reference")
       .single();
     if (error || !c) {
       setBusy(false);
-      return toast.error("Could not submit your report. Please try again.");
+      return void toast.error("Could not submit your report. Please try again.");
     }
     for (const f of files) {
       const path = `${c.id}/${crypto.randomUUID()}-${f.name.replace(/[^\w.-]/g, "_")}`;

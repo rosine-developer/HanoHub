@@ -35,8 +35,8 @@ function AuthPage() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const parsed = schema.safeParse(Object.fromEntries(fd));
-    if (!parsed.success) return toast.error(parsed.error.issues[0].message);
-    if (mode === "up" && !parsed.data.fullName) return toast.error("Enter your full name");
+    if (!parsed.success) return void toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
+    if (mode === "up" && !parsed.data.fullName) return void toast.error("Enter your full name");
     setBusy(true);
     const { email, password, fullName } = parsed.data;
     if (mode === "up") {
@@ -46,12 +46,12 @@ function AuthPage() {
         options: { emailRedirectTo: window.location.origin + "/dashboard", data: { full_name: fullName } },
       });
       setBusy(false);
-      if (error) return toast.error(error.message);
+      if (error) return void toast.error(error.message);
       setSent(true);
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setBusy(false);
-      if (error) return toast.error(error.message);
+      if (error) return void toast.error(error.message);
       navigate({ to: "/dashboard" });
     }
   }

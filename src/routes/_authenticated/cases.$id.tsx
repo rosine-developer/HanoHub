@@ -40,16 +40,16 @@ function CasePage() {
 
   async function send() {
     const body = msg.trim();
-    if (!body || body.length > 2000) return toast.error("Message must be 1–2000 characters.");
+    if (!body || body.length > 2000) return void toast.error("Message must be 1–2000 characters.");
     const { error } = await supabase.from("messages").insert({ complaint_id: id, author_id: user.id, body });
-    if (error) return toast.error("Could not send message.");
+    if (error) return void toast.error("Could not send message.");
     setMsg("");
     qc.invalidateQueries({ queryKey: ["case", id] });
   }
 
   async function openFile(path: string) {
     const { data: s, error } = await supabase.storage.from("evidence").createSignedUrl(path, 60);
-    if (error || !s) return toast.error("Could not open file.");
+    if (error || !s) return void toast.error("Could not open file.");
     window.open(s.signedUrl, "_blank", "noopener");
   }
 
