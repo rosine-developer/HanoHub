@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { STATUS_LABEL, formatDate, type ComplaintStatus } from "@/lib/hanohub";
 import { cn } from "@/lib/utils";
@@ -12,6 +14,7 @@ export const Route = createFileRoute("/_authenticated/cases/")({
   component: CasesPage,
 });
 
+const PAGE_SIZE = 25;
 type Tab = "mine" | "unassigned" | "all";
 
 function CasesPage() {
@@ -19,6 +22,12 @@ function CasesPage() {
   const [tab, setTab] = useState<Tab>("mine");
   const [status, setStatus] = useState<ComplaintStatus | "">("");
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+
+  // Reset page when filters change
+  function setTabAndReset(t: Tab) { setTab(t); setPage(1); }
+  function setStatusAndReset(s: ComplaintStatus | "") { setStatus(s); setPage(1); }
+  function setQAndReset(v: string) { setQ(v); setPage(1); }
 
   const { data: cases = [], isLoading } = useQuery({
     queryKey: ["staff-cases"],
@@ -27,7 +36,7 @@ function CasesPage() {
         .from("complaints")
         .select("id, reference, title, status, created_at, due_at, assigned_officer_id, categories(name), areas(district, sector)")
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(1000);
       if (error) throw error;
       return data;
     },
@@ -43,9 +52,13 @@ function CasesPage() {
   ];
 
   const term = q.trim().toLowerCase();
-  const rows = (tab === "mine" ? mine : tab === "unassigned" ? cases.filter((c) => !c.assigned_officer_id) : cases)
+  const filtered = (tab === "mine" ? mine : tab === "unassigned" ? cases.filter((c) => !c.assigned_officer_id) : cases)
     .filter((c) => !status || c.status === status)
     .filter((c) => !term || c.reference.toLowerCase().includes(term) || c.title.toLowerCase().includes(term));
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const rows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -61,18 +74,21 @@ function CasesPage() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex rounded-lg border bg-card p-1">
           {(["mine", "unassigned", "all"] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
+            <button key={t} onClick={() => setTabAndReset(t)}
               className={cn("rounded-md px-3 py-1.5 text-sm capitalize", tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>
               {t === "mine" ? "My cases" : t}
             </button>
           ))}
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value as ComplaintStatus | "")}
+        <select value={status} onChange={(e) => setStatusAndReset(e.target.value as ComplaintStatus | "")}
           className="h-10 rounded-md border border-input bg-card px-3 text-sm">
           <option value="">All statuses</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search reference or title" className="max-w-xs bg-card" />
+        <Input value={q} onChange={(e) => setQAndReset(e.target.value)} placeholder="Search reference or title" className="max-w-xs bg-card" />
+        <span className="ml-auto text-sm text-muted-foreground">
+          {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+        </span>
       </div>
       <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
         <table className="w-full text-sm">
@@ -98,6 +114,35 @@ function CasesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Page {safePage} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

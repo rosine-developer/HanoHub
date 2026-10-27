@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -105,7 +106,29 @@ export function CaseActions(props: {
     refresh();
   }
 
-  const showPanel = actions.length > 0 || (isOfficer && !assignedTo) || isSupervisor;
+  // ── Challenge workflow ─────────────────────────────────────
+  const [showChallenge, setShowChallenge] = useState(false);
+  const [challengeReason, setChallengeReason] = useState("");
+  const [challengeBusy, setChallengeBusy] = useState(false);
+  const canChallenge = isOwner && ["resolution_proposed", "closed"].includes(status);
+
+  async function submitChallenge() {
+    if (challengeReason.trim().length < 10)
+      return void toast.error("Please provide a detailed reason (at least 10 characters).");
+    setChallengeBusy(true);
+    const { error } = await supabase.rpc("submit_challenge", {
+      _cid: caseId,
+      _reason: challengeReason.trim(),
+    });
+    setChallengeBusy(false);
+    if (error) return void toast.error(error.message);
+    toast.success("Challenge submitted. A supervisor will review it.");
+    setChallengeReason("");
+    setShowChallenge(false);
+    refresh();
+  }
+
+  const showPanel = actions.length > 0 || (isOfficer && !assignedTo) || isSupervisor || canChallenge;
 
   return (
     <section className="space-y-4 rounded-xl border bg-card p-6 shadow-card">
@@ -133,6 +156,38 @@ export function CaseActions(props: {
           </div>
         </>
       )}
+
+      {/* Challenge section for citizens */}
+      {canChallenge && (
+        <div className="border-t pt-4">
+          {!showChallenge ? (
+            <Button size="sm" variant="outline" onClick={() => setShowChallenge(true)}>
+              <AlertTriangle className="mr-2 h-4 w-4 text-warning" />
+              Challenge this resolution
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Why are you challenging this resolution?</p>
+              <Textarea
+                value={challengeReason}
+                onChange={(e) => setChallengeReason(e.target.value)}
+                placeholder="Describe why the resolution is unsatisfactory (min. 10 characters)…"
+                rows={4}
+                maxLength={2000}
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={submitChallenge} disabled={challengeBusy}>
+                  Submit challenge
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowChallenge(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {!showPanel && <p className="text-sm text-muted-foreground">No actions available right now.</p>}
       <label className="block text-sm">
         <span className="text-muted-foreground">Add a file (JPG, PNG, WEBP, PDF · 10 MB)</span>

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, FilePlus2, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { Bell, FilePlus2, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -15,9 +15,13 @@ export const Route = createFileRoute("/_authenticated")({
   component: AppShell,
 });
 
+// Nav items — each may require a role; undefined means available to everyone
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/report", label: "Report an issue", icon: FilePlus2 },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: undefined },
+  { to: "/report", label: "Report an issue", icon: FilePlus2, roles: undefined },
+  { to: "/cases", label: "Case management", icon: Users, roles: ["officer", "supervisor", "admin"] },
+  { to: "/supervisor", label: "Supervisor", icon: ShieldCheck, roles: ["supervisor", "admin"] },
+  { to: "/admin", label: "Administration", icon: Settings, roles: ["admin"] },
 ] as const;
 
 function AppShell() {
@@ -55,12 +59,17 @@ function AppShell() {
     navigate({ to: "/auth", replace: true });
   }
 
+  // Filter nav items based on the user's roles
+  const visibleNav = NAV.filter(
+    (n) => !n.roles || (profile?.roles ?? []).some((r) => (n.roles as readonly string[]).includes(r)),
+  );
+
   const sidebar = (
     <nav className="flex h-full flex-col gap-1 p-4">
       <Link to="/" className="mb-6 px-2 text-xl font-bold text-sidebar-foreground">
         Hano<span className="text-sidebar-primary">Hub</span>
       </Link>
-      {NAV.map((n) => (
+      {visibleNav.map((n) => (
         <Link
           key={n.to}
           to={n.to}
@@ -98,14 +107,14 @@ function AppShell() {
             {open ? <X /> : <Menu />}
           </button>
           <span />
-          <span className="relative" aria-label="Notifications">
+          <Link to="/notifications" className="relative" aria-label="Notifications">
             <Bell className="h-5 w-5 text-muted-foreground" />
             {unread > 0 && (
               <span className="absolute -right-2 -top-2 rounded-full bg-destructive px-1.5 text-[10px] text-destructive-foreground">
                 {unread}
               </span>
             )}
-          </span>
+          </Link>
         </header>
         <main className="flex-1 p-4 md:p-8">
           <Outlet />

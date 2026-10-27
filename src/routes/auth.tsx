@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -25,8 +26,10 @@ const schema = z.object({
   fullName: z.string().trim().max(100).optional(),
 });
 
+type Mode = "in" | "up" | "reset";
+
 function AuthPage() {
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const [mode, setMode] = useState<Mode>("in");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const navigate = useNavigate();
@@ -34,7 +37,24 @@ function AuthPage() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const parsed = schema.safeParse(Object.fromEntries(fd));
+    const raw = Object.fromEntries(fd);
+
+    // ── Password reset ──────────────────────────────────────────
+    if (mode === "reset") {
+      const emailParsed = z.string().trim().email("Enter a valid email").safeParse(raw.email);
+      if (!emailParsed.success) return void toast.error(emailParsed.error.issues[0]?.message ?? "Invalid email");
+      setBusy(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(emailParsed.data, {
+        redirectTo: window.location.origin + "/auth/update-password",
+      });
+      setBusy(false);
+      if (error) return void toast.error(error.message);
+      setSent(true);
+      return;
+    }
+
+    // ── Sign in / Sign up ───────────────────────────────────────
+    const parsed = schema.safeParse(raw);
     if (!parsed.success) return void toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
     if (mode === "up" && !parsed.data.fullName) return void toast.error("Enter your full name");
     setBusy(true);
@@ -43,7 +63,10 @@ function AuthPage() {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin + "/dashboard", data: { full_name: fullName } },
+        options: {
+          emailRedirectTo: window.location.origin + "/dashboard",
+          data: { full_name: fullName },
+        },
       });
       setBusy(false);
       if (error) return void toast.error(error.message);
@@ -56,17 +79,42 @@ function AuthPage() {
     }
   }
 
+  function switchMode(next: Mode) {
+    setSent(false);
+    setMode(next);
+  }
+
+  const titles: Record<Mode, string> = {
+    in: "Sign in",
+    up: "Create a citizen account",
+    reset: "Reset your password",
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-xl border bg-card p-8 shadow-card">
         <Link to="/" className="text-2xl font-bold text-primary">
           Hano<span className="text-secondary">Hub</span>
         </Link>
+
         {sent ? (
-          <p className="mt-6 text-sm">Check your email to confirm your account, then sign in.</p>
+          <div className="mt-6 space-y-3">
+            <p className="text-sm">
+              {mode === "reset"
+                ? "Check your email for a password reset link."
+                : "Check your email to confirm your account, then sign in."}
+            </p>
+            <button
+              onClick={() => switchMode("in")}
+              className="flex items-center gap-1 text-sm text-secondary hover:underline"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to sign in
+            </button>
+          </div>
         ) : (
           <>
-            <h1 className="mt-4 text-lg font-semibold">{mode === "in" ? "Sign in" : "Create a citizen account"}</h1>
+            <h1 className="mt-4 text-lg font-semibold">{titles[mode]}</h1>
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
               {mode === "up" && (
                 <div className="space-y-1.5">
@@ -78,17 +126,60 @@ function AuthPage() {
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" name="email" type="email" autoComplete="email" />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" name="password" type="password" autoComplete={mode === "in" ? "current-password" : "new-password"} />
-              </div>
+              {mode !== "reset" && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    {mode === "in" && (
+                      <button
+                        type="button"
+                        onClick={() => switchMode("reset")}
+                        className="text-xs text-secondary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete={mode === "in" ? "current-password" : "new-password"}
+                  />
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? "Please wait…" : mode === "in" ? "Sign in" : "Create account"}
+                {busy
+                  ? "Please wait…"
+                  : mode === "in"
+                  ? "Sign in"
+                  : mode === "up"
+                  ? "Create account"
+                  : "Send reset link"}
               </Button>
             </form>
-            <button onClick={() => setMode(mode === "in" ? "up" : "in")} className="mt-4 text-sm text-secondary hover:underline">
-              {mode === "in" ? "New here? Create an account" : "Already registered? Sign in"}
-            </button>
+
+            <div className="mt-4 flex flex-col gap-1">
+              {mode !== "up" && (
+                <button
+                  type="button"
+                  onClick={() => switchMode("up")}
+                  className="text-sm text-secondary hover:underline text-left"
+                >
+                  New here? Create an account
+                </button>
+              )}
+              {mode !== "in" && (
+                <button
+                  type="button"
+                  onClick={() => switchMode("in")}
+                  className="flex items-center gap-1 text-sm text-secondary hover:underline"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to sign in
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
