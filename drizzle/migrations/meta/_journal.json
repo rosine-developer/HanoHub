@@ -8,6 +8,13 @@
       "when": 1793118856599,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793119158953,
+      "tag": "0001_workflow_functions",
+      "breakpoints": true
     }
   ]
 }

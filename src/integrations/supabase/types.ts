@@ -360,6 +360,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_complaint: {
+        Args: { _cid: string; _officer: string }
+        Returns: undefined
+      }
       can_view_complaint: { Args: { _cid: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -369,6 +373,21 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      list_officers: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
+      transition_complaint: {
+        Args: {
+          _cid: string
+          _note?: string
+          _to: Database["public"]["Enums"]["complaint_status"]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "citizen" | "officer" | "supervisor" | "admin"
