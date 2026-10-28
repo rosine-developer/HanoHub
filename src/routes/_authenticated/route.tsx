@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, FilePlus2, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { Bell, FilePlus2, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X, Landmark } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -16,12 +16,15 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 // Nav items — each may require a role; undefined means available to everyone
+const LEADER_ROLES = ["umudugudu_leader","akagari_leader","umurenge_leader","akarere_leader","intara_leader"];
+
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: undefined },
-  { to: "/report", label: "Report an issue", icon: FilePlus2, roles: undefined },
-  { to: "/cases", label: "Case management", icon: Users, roles: ["officer", "supervisor", "admin"] },
-  { to: "/supervisor", label: "Supervisor", icon: ShieldCheck, roles: ["supervisor", "admin"] },
-  { to: "/admin", label: "Administration", icon: Settings, roles: ["admin"] },
+  { to: "/dashboard",   label: "Dashboard",          icon: LayoutDashboard, roles: undefined },
+  { to: "/report",      label: "Report an issue",     icon: FilePlus2,       roles: undefined },
+  { to: "/leader",      label: "Leader Dashboard",    icon: Landmark,        roles: LEADER_ROLES },
+  { to: "/cases",       label: "Case management",     icon: Users,           roles: ["officer","supervisor","admin"] },
+  { to: "/supervisor",  label: "Supervisor",          icon: ShieldCheck,     roles: ["supervisor","admin"] },
+  { to: "/admin",       label: "Administration",      icon: Settings,        roles: ["admin"] },
 ] as const;
 
 function AppShell() {
@@ -34,11 +37,20 @@ function AppShell() {
   const { data: profile } = useQuery({
     queryKey: ["me", user.id],
     queryFn: async () => {
-      const [{ data: p }, { data: roles }] = await Promise.all([
+      const [{ data: p }, { data: roles }, { data: leaderArea }] = await Promise.all([
         supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", user.id),
+        supabase.rpc("my_leader_area"),
       ]);
-      return { name: p?.full_name || user.email, roles: (roles ?? []).map((r) => r.role) };
+      const r = (roles ?? []).map((x) => x.role as string);
+      const area = leaderArea?.[0] ?? null;
+      return {
+        name: p?.full_name || user.email,
+        roles: r,
+        leaderArea: area
+          ? [area.village, area.cell, area.sector, area.district, area.province].filter(Boolean).join(", ")
+          : null,
+      };
     },
   });
   const { data: unread = 0 } = useQuery({
@@ -85,6 +97,9 @@ function AppShell() {
       <div className="mt-auto border-t border-sidebar-border pt-4 text-sm text-sidebar-foreground">
         <p className="truncate px-3 font-medium">{profile?.name}</p>
         <p className="px-3 text-xs capitalize opacity-70">{profile?.roles.join(", ")}</p>
+        {profile?.leaderArea && (
+          <p className="px-3 mt-0.5 text-xs opacity-60 truncate">📍 {profile.leaderArea}</p>
+        )}
         <button onClick={signOut} className="mt-3 flex w-full items-center gap-3 rounded-lg px-3 py-2 hover:bg-sidebar-accent">
           <LogOut className="h-4 w-4" /> Sign out
         </button>
