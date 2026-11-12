@@ -10,30 +10,128 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDate, type ComplaintStatus } from "@/lib/hanohub";
 import { cn } from "@/lib/utils";
 
-// All 5 leader roles
 const LEADER_ROLES = [
-  "umudugudu_leader",
-  "akagari_leader",
-  "umurenge_leader",
-  "akarere_leader",
-  "intara_leader",
+  "umudugudu_leader","akagari_leader","umurenge_leader","akarere_leader","intara_leader",
 ] as const;
 
 const LEVEL_LABEL: Record<string, string> = {
-  umudugudu: "Umudugudu (Village)",
-  akagari:   "Akagari (Cell)",
-  umurenge:  "Umurenge (Sector)",
-  akarere:   "Akarere (District)",
-  intara:    "Intara (Province)",
+  umudugudu: "Umudugudu (Village)", akagari: "Akagari (Cell)",
+  umurenge: "Umurenge (Sector)",   akarere: "Akarere (District)", intara: "Intara (Province)",
 };
 
 const NEXT_LEVEL: Record<string, string | null> = {
-  umudugudu: "Akagari (Cell)",
-  akagari:   "Umurenge (Sector)",
-  umurenge:  "Akarere (District)",
-  akarere:   "Intara (Province)",
-  intara:    null,
+  umudugudu: "Akagari (Cell)", akagari: "Umurenge (Sector)",
+  umurenge: "Akarere (District)", akarere: "Intara (Province)", intara: null,
 };
+
+type Area = { id: string; province: string; district: string; sector: string; cell: string; village: string };
+function unique(arr: string[]) { return Array.from(new Set(arr.filter(Boolean))).sort(); }
+
+// ── Area picker shown when leader has no area assigned ──────
+function AreaPicker({ userId, role, onSaved }: { userId: string; role: string; onSaved: () => void }) {
+  const qc = useQueryClient();
+  const [province, setProvince] = useState("");
+  const [district, setDistrict] = useState("");
+  const [sector, setSector]     = useState("");
+  const [cell, setCell]         = useState("");
+  const [areaId, setAreaId]     = useState("");
+
+  const { data: areas = [] } = useQuery({
+    queryKey: ["areas-all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("areas")
+        .select("id,province,district,sector,cell,village")
+        .order("province").order("district").order("sector").order("cell").order("village");
+      return (data ?? []) as Area[];
+    },
+  });
+
+  const provinces = unique(areas.map(a => a.province));
+  const districts = unique(areas.filter(a => a.province === province).map(a => a.district));
+  const sectors   = unique(areas.filter(a => a.province === province && a.district === district).map(a => a.sector));
+  const cells     = unique(areas.filter(a => a.province === province && a.district === district && a.sector === sector).map(a => a.cell));
+  const villages  = areas.filter(a => a.province === province && a.district === district && a.sector === sector && a.cell === cell);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!areaId) throw new Error("Please select your Umudugudu (village)");
+      const area = areas.find(a => a.id === areaId);
+      if (!area) throw new Error("Area not found");
+      const { error } = await supabase.from("leader_areas").upsert({
+        user_id: userId, role,
+        province: area.province, district: area.district,
+        sector: area.sector, cell: area.cell, village: area.village,
+      }, { onConflict: "user_id,role" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Your area has been saved!");
+      qc.invalidateQueries({ queryKey: ["my-leader-area"] });
+      qc.invalidateQueries({ queryKey: ["me"] });
+      onSaved();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const sel = "h-10 w-full rounded-md border border-input bg-card px-3 text-sm disabled:opacity-50";
+
+  return (
+    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <MapPin className="h-5 w-5 text-primary" />
+        <h2 className="font-semibold">Select your area</h2>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        You haven't been assigned an area yet. Select the village you are responsible for.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Intara (Province)</label>
+          <select className={sel} value={province}
+            onChange={e => { setProvince(e.target.value); setDistrict(""); setSector(""); setCell(""); setAreaId(""); }}>
+            <option value="">Select…</option>
+            {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Akarere (District)</label>
+          <select className={sel} value={district} disabled={!province}
+            onChange={e => { setDistrict(e.target.value); setSector(""); setCell(""); setAreaId(""); }}>
+            <option value="">Select…</option>
+            {districts.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Umurenge (Sector)</label>
+          <select className={sel} value={sector} disabled={!district}
+            onChange={e => { setSector(e.target.value); setCell(""); setAreaId(""); }}>
+            <option value="">Select…</option>
+            {sectors.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Akagari (Cell)</label>
+          <select className={sel} value={cell} disabled={!sector}
+            onChange={e => { setCell(e.target.value); setAreaId(""); }}>
+            <option value="">Select…</option>
+            {cells.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Umudugudu (Village)</label>
+          <select className={sel} value={areaId} disabled={!cell}
+            onChange={e => setAreaId(e.target.value)}>
+            <option value="">Select…</option>
+            {villages.map(v => <option key={v.id} value={v.id}>{v.village}</option>)}
+          </select>
+        </div>
+      </div>
+      <Button onClick={() => save.mutate()} disabled={save.isPending || !areaId}>
+        {save.isPending ? "Saving…" : "Confirm my area"}
+      </Button>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/leader")({
   head: () => ({ meta: [{ title: "Leader Dashboard — HanoHub" }] }),
@@ -68,12 +166,13 @@ type Complaint = {
 };
 
 function LeaderPage() {
+  const { user } = Route.useRouteContext();
   const qc = useQueryClient();
   const [noteMap, setNoteMap] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
 
   // My area assignment
-  const { data: myArea } = useQuery({
+  const { data: myArea, refetch: refetchArea } = useQuery({
     queryKey: ["my-leader-area"],
     queryFn: async () => {
       const { data } = await supabase.rpc("my_leader_area");
@@ -131,10 +230,18 @@ function LeaderPage() {
 
   const now = Date.now();
 
+  // Get user's leader role
+  const { data: myRoleData } = useQuery({
+    queryKey: ["my-leader-role", user.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_roles").select("role")
+        .eq("user_id", user.id).in("role", LEADER_ROLES as unknown as string[]);
+      return data?.[0]?.role ?? "umudugudu_leader";
+    },
+  });
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold">Leader Dashboard</h1>
         {myArea && (
@@ -142,16 +249,24 @@ function LeaderPage() {
             <MapPin className="h-4 w-4 text-primary" />
             <span>
               <span className="font-medium text-foreground capitalize">
-                {myArea.role.replace("_", " ")}
+                {myArea.role.replace(/_/g, " ")}
               </span>
               {" — "}
               {[myArea.village, myArea.cell, myArea.sector, myArea.district, myArea.province]
-                .filter(Boolean)
-                .join(", ")}
+                .filter(Boolean).join(", ")}
             </span>
           </div>
         )}
       </div>
+
+      {/* Show area picker if not assigned yet */}
+      {!myArea && myRoleData && (
+        <AreaPicker
+          userId={user.id}
+          role={myRoleData}
+          onSaved={() => refetchArea()}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
