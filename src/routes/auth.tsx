@@ -89,57 +89,50 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F5F7FA] p-4">
-      <div className="flex w-full max-w-4xl overflow-hidden rounded-2xl shadow-2xl border border-[#E2E8F0]">
+    <div className="fixed inset-0 flex items-center justify-center bg-[#F5F7FA] p-4">
+      <div className="flex w-full max-w-4xl h-[min(600px,90vh)] overflow-hidden rounded-2xl shadow-2xl border border-[#E2E8F0]">
 
-      {/* ── Left panel — image + quote ── */}
+      {/* ── Left panel ── */}
       <div className="relative hidden md:flex md:w-5/12 flex-col justify-between overflow-hidden bg-primary-deep">
-        {/* Background gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#102A43] via-[#163B65] to-[#0F766E] opacity-95" />
-
-        {/* Pattern overlay */}
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
 
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-between h-full p-10">
-          {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-white">
-            Hano<span className="text-teal-300">Hub</span>
-          </Link>
+          {/* Top — empty, no logo */}
+          <div />
 
-          {/* Center illustration area */}
-          <div className="flex flex-col items-center justify-center gap-6 text-center">
-            {/* Rwanda map silhouette placeholder */}
-            <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-              <span className="text-5xl">🇷🇼</span>
+          {/* Center */}
+          <div className="flex flex-col items-center justify-center gap-5 text-center">
+            <div className="w-28 h-28 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+              <span className="text-3xl font-bold text-white leading-none">
+                Hano<br/><span className="text-teal-300">Hub</span>
+              </span>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white leading-tight">
+              <h2 className="text-xl font-bold text-white leading-snug">
                 Your Community.<br />Your Voice.<br />Your Progress.
               </h2>
-              <p className="mt-3 text-sm text-white/70">
+              <p className="mt-2 text-xs text-white/60">
                 Report issues · Track progress · Build Rwanda
               </p>
             </div>
           </div>
 
           {/* Quote */}
-          <div className="bg-white/10 rounded-xl p-5 border border-white/20">
-            <p className="text-white/90 text-sm italic leading-relaxed">
-              "{Q.text}"
-            </p>
-            <p className="mt-2 text-xs text-white/50 font-medium">{Q.author}</p>
+          <div className="bg-white/10 rounded-xl p-4 border border-white/20">
+            <p className="text-white/90 text-xs italic leading-relaxed">"{Q.text}"</p>
+            <p className="mt-1.5 text-xs text-white/50 font-medium">{Q.author}</p>
           </div>
         </div>
       </div>
 
       {/* ── Right panel — form ── */}
-      <div className="flex flex-1 flex-col items-center justify-center px-8 py-10 bg-white">
+      <div className="flex flex-1 flex-col items-center justify-center px-8 py-8 bg-white overflow-y-auto">
         <div className="w-full max-w-sm">
 
-          {/* Mobile logo */}
-          <Link to="/" className="md:hidden text-2xl font-bold text-primary block mb-8">
+          {/* Mobile logo only */}
+          <Link to="/" className="md:hidden text-2xl font-bold text-primary block mb-6">
             Hano<span className="text-secondary">Hub</span>
           </Link>
 
@@ -167,21 +160,21 @@ function AuthPage() {
           ) : (
             <>
               {/* Heading */}
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-[#243447]">
+              <div className="mb-5">
+                <h1 className="text-2xl font-bold text-[#243447]">
                   {mode === "in" ? "Welcome back" : mode === "up" ? "Create account" : "Reset password"}
                 </h1>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {mode === "in"
                     ? "Sign in to your HanoHub account"
                     : mode === "up"
-                    ? "Join HanoHub and start reporting issues in your community"
+                    ? "Join HanoHub to report issues in your community"
                     : "Enter your email and we'll send you a reset link"}
                 </p>
               </div>
 
               {/* Form */}
-              <form onSubmit={onSubmit} className="space-y-5">
+              <form onSubmit={onSubmit} className="space-y-4">
                 {mode === "up" && (
                   <div className="space-y-1.5">
                     <Label htmlFor="fullName" className="text-sm font-medium text-[#243447]">
@@ -254,7 +247,7 @@ function AuthPage() {
               </form>
 
               {/* Divider */}
-              <div className="relative my-6">
+              <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-[#E2E8F0]" />
                 </div>
