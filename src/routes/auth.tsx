@@ -12,9 +12,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in — HanoHub" },
-      { name: "description", content: "Sign in or create your HanoHub account to report and track community issues." },
-      { property: "og:title", content: "Sign in — HanoHub" },
-      { property: "og:description", content: "Access your HanoHub citizen account." },
+      { name: "description", content: "Sign in or create your HanoHub account." },
     ],
   }),
   component: AuthPage,
@@ -28,6 +26,14 @@ const schema = z.object({
 
 type Mode = "in" | "up" | "reset";
 
+// ── Quotes shown on the left panel ──────────────────────────
+const QUOTES = [
+  { text: "Every voice matters. Report issues, track progress, build a better Rwanda.", author: "HanoHub Mission" },
+  { text: "Transparency between citizens and their leaders creates stronger communities.", author: "Community Values" },
+  { text: "Your report today is tomorrow's solution for your neighborhood.", author: "HanoHub" },
+];
+const Q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+
 function AuthPage() {
   const [mode, setMode] = useState<Mode>("in");
   const [busy, setBusy] = useState(false);
@@ -39,7 +45,6 @@ function AuthPage() {
     const fd = new FormData(e.currentTarget);
     const raw = Object.fromEntries(fd);
 
-    // ── Password reset ──────────────────────────────────────────
     if (mode === "reset") {
       const emailParsed = z.string().trim().email("Enter a valid email").safeParse(raw.email);
       if (!emailParsed.success) return void toast.error(emailParsed.error.issues[0]?.message ?? "Invalid email");
@@ -53,7 +58,6 @@ function AuthPage() {
       return;
     }
 
-    // ── Sign in / Sign up ───────────────────────────────────────
     const parsed = schema.safeParse(raw);
     if (!parsed.success) return void toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
     if (mode === "up" && !parsed.data.fullName) return void toast.error("Enter your full name");
@@ -84,104 +88,220 @@ function AuthPage() {
     setMode(next);
   }
 
-  const titles: Record<Mode, string> = {
-    in: "Sign in",
-    up: "Create a citizen account",
-    reset: "Reset your password",
-  };
-
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-xl border bg-card p-8 shadow-card">
-        <Link to="/" className="text-2xl font-bold text-primary">
-          Hano<span className="text-secondary">Hub</span>
-        </Link>
+    <div className="flex min-h-screen">
 
-        {sent ? (
-          <div className="mt-6 space-y-3">
-            <p className="text-sm">
-              {mode === "reset"
-                ? "Check your email for a password reset link."
-                : "Check your email to confirm your account, then sign in."}
-            </p>
-            <button
-              onClick={() => switchMode("in")}
-              className="flex items-center gap-1 text-sm text-secondary hover:underline"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to sign in
-            </button>
+      {/* ── Left panel — image + quote ── */}
+      <div className="relative hidden lg:flex lg:w-5/12 xl:w-1/2 flex-col justify-between overflow-hidden bg-primary-deep">
+        {/* Background gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#102A43] via-[#163B65] to-[#0F766E] opacity-95" />
+
+        {/* Pattern overlay */}
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-between h-full p-10">
+          {/* Logo */}
+          <Link to="/" className="text-2xl font-bold text-white">
+            Hano<span className="text-teal-300">Hub</span>
+          </Link>
+
+          {/* Center illustration area */}
+          <div className="flex flex-col items-center justify-center gap-6 text-center">
+            {/* Rwanda map silhouette placeholder */}
+            <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+              <span className="text-5xl">🇷🇼</span>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white leading-tight">
+                Your Community.<br />Your Voice.<br />Your Progress.
+              </h2>
+              <p className="mt-3 text-sm text-white/70">
+                Report issues · Track progress · Build Rwanda
+              </p>
+            </div>
           </div>
-        ) : (
-          <>
-            <h1 className="mt-4 text-lg font-semibold">{titles[mode]}</h1>
-            <form onSubmit={onSubmit} className="mt-6 space-y-4">
-              {mode === "up" && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="fullName">Full name</Label>
-                  <Input id="fullName" name="fullName" autoComplete="name" />
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" name="email" type="email" autoComplete="email" />
+
+          {/* Quote */}
+          <div className="bg-white/10 rounded-xl p-5 border border-white/20">
+            <p className="text-white/90 text-sm italic leading-relaxed">
+              "{Q.text}"
+            </p>
+            <p className="mt-2 text-xs text-white/50 font-medium">{Q.author}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right panel — form ── */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 bg-[#F5F7FA]">
+        <div className="w-full max-w-md">
+
+          {/* Mobile logo */}
+          <Link to="/" className="lg:hidden text-2xl font-bold text-primary block mb-8">
+            Hano<span className="text-secondary">Hub</span>
+          </Link>
+
+          {sent ? (
+            <div className="space-y-4">
+              <div className="rounded-xl bg-success/10 border border-success/20 p-6 text-center">
+                <span className="text-4xl">✉️</span>
+                <p className="mt-3 font-semibold text-success">
+                  {mode === "reset" ? "Reset link sent!" : "Account created!"}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {mode === "reset"
+                    ? "Check your email for a password reset link."
+                    : "Check your email to confirm your account, then sign in."}
+                </p>
               </div>
-              {mode !== "reset" && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    {mode === "in" && (
-                      <button
-                        type="button"
-                        onClick={() => switchMode("reset")}
-                        className="text-xs text-secondary hover:underline"
-                      >
-                        Forgot password?
-                      </button>
-                    )}
+              <button
+                onClick={() => switchMode("in")}
+                className="flex items-center gap-1 text-sm text-secondary hover:underline"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to sign in
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Heading */}
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-[#243447]">
+                  {mode === "in" ? "Welcome back" : mode === "up" ? "Create account" : "Reset password"}
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {mode === "in"
+                    ? "Sign in to your HanoHub account"
+                    : mode === "up"
+                    ? "Join HanoHub and start reporting issues in your community"
+                    : "Enter your email and we'll send you a reset link"}
+                </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={onSubmit} className="space-y-5">
+                {mode === "up" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fullName" className="text-sm font-medium text-[#243447]">
+                      Full name
+                    </Label>
+                    <Input
+                      id="fullName"
+                      name="fullName"
+                      autoComplete="name"
+                      placeholder="UMURERWA Rosine"
+                      className="h-12 bg-white border-[#E2E8F0] rounded-lg text-sm"
+                    />
                   </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-sm font-medium text-[#243447]">
+                    Email address
+                  </Label>
                   <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete={mode === "in" ? "current-password" : "new-password"}
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    className="h-12 bg-white border-[#E2E8F0] rounded-lg text-sm"
                   />
                 </div>
-              )}
-              <Button type="submit" className="w-full" disabled={busy}>
-                {busy
-                  ? "Please wait…"
-                  : mode === "in"
-                  ? "Sign in"
-                  : mode === "up"
-                  ? "Create account"
-                  : "Send reset link"}
-              </Button>
-            </form>
 
-            <div className="mt-4 flex flex-col gap-1">
-              {mode !== "up" && (
-                <button
-                  type="button"
-                  onClick={() => switchMode("up")}
-                  className="text-sm text-secondary hover:underline text-left"
+                {mode !== "reset" && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password" className="text-sm font-medium text-[#243447]">
+                        Password
+                      </Label>
+                      {mode === "in" && (
+                        <button
+                          type="button"
+                          onClick={() => switchMode("reset")}
+                          className="text-xs font-medium text-secondary hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      )}
+                    </div>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      autoComplete={mode === "in" ? "current-password" : "new-password"}
+                      placeholder="••••••••"
+                      className="h-12 bg-white border-[#E2E8F0] rounded-lg text-sm"
+                    />
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full h-12 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90"
                 >
-                  New here? Create an account
-                </button>
-              )}
+                  {busy
+                    ? "Please wait…"
+                    : mode === "in"
+                    ? "Sign in"
+                    : mode === "up"
+                    ? "Create account"
+                    : "Send reset link"}
+                </Button>
+              </form>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#E2E8F0]" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-[#F5F7FA] px-3 text-muted-foreground">or</span>
+                </div>
+              </div>
+
+              {/* Switch mode */}
+              <p className="text-center text-sm text-muted-foreground">
+                {mode === "in" ? (
+                  <>
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => switchMode("up")}
+                      className="font-semibold text-secondary hover:underline"
+                    >
+                      Sign up
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => switchMode("in")}
+                      className="font-semibold text-secondary hover:underline"
+                    >
+                      Sign in
+                    </button>
+                  </>
+                )}
+              </p>
+
               {mode !== "in" && (
                 <button
                   type="button"
                   onClick={() => switchMode("in")}
-                  className="flex items-center gap-1 text-sm text-secondary hover:underline"
+                  className="mt-3 flex items-center justify-center gap-1 w-full text-sm text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to sign in
                 </button>
               )}
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
