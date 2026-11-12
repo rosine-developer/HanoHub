@@ -131,11 +131,19 @@ function AuthPage() {
       <div className="flex flex-1 flex-col items-center justify-center px-8 py-8 bg-white overflow-y-auto">
         <div className="w-full max-w-sm">
 
+          {/* Back to home */}
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary mb-5 transition-colors"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Back to home
+          </Link>
+
           {/* Mobile logo only */}
           <Link to="/" className="md:hidden text-2xl font-bold text-primary block mb-6">
             Hano<span className="text-secondary">Hub</span>
           </Link>
-
           {sent ? (
             <div className="space-y-4">
               <div className="rounded-xl bg-success/10 border border-success/20 p-6 text-center">
