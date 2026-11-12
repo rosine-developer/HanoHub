@@ -48,12 +48,17 @@ const CITIZEN: Partial<Record<ComplaintStatus, Action[]>> = {
 
 export function CaseActions(props: {
   caseId: string; status: ComplaintStatus; assignedTo: string | null; userId: string; isOwner: boolean;
-  isOfficer: boolean; isSupervisor: boolean;
+  isOfficer: boolean; isSupervisor: boolean; isLeader?: boolean; currentLeaderId?: string | null;
 }) {
-  const { caseId, status, assignedTo, userId, isOwner, isOfficer, isSupervisor } = props;
+  const { caseId, status, assignedTo, userId, isOwner, isOfficer, isSupervisor, isLeader, currentLeaderId } = props;
   const qc = useQueryClient();
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [leaderNote, setLeaderNote] = useState("");
+  const [leaderBusy, setLeaderBusy] = useState(false);
+
+  // Leader is active if they are the assigned leader OR if no leader is assigned (they can claim it)
+  const isActiveLeader = isLeader && (currentLeaderId === userId || !currentLeaderId);
 
   const { data: officers = [] } = useQuery({
     queryKey: ["officers"],
@@ -128,7 +133,28 @@ export function CaseActions(props: {
     refresh();
   }
 
-  const showPanel = actions.length > 0 || (isOfficer && !assignedTo) || isSupervisor || canChallenge;
+  async function leaderResolve() {
+    if (leaderNote.trim().length < 5) return void toast.error("Add a resolution note (at least 5 characters).");
+    setLeaderBusy(true);
+    const { error } = await supabase.rpc("leader_resolve", { _cid: caseId, _note: leaderNote.trim() });
+    setLeaderBusy(false);
+    if (error) return void toast.error(error.message);
+    toast.success("Resolution proposed — citizen will be notified.");
+    setLeaderNote("");
+    refresh();
+  }
+
+  async function leaderEscalate() {
+    setLeaderBusy(true);
+    const { error } = await supabase.rpc("escalate_to_next_level", { _cid: caseId, _note: leaderNote.trim() || null });
+    setLeaderBusy(false);
+    if (error) return void toast.error(error.message);
+    toast.success("Case escalated to next level.");
+    setLeaderNote("");
+    refresh();
+  }
+
+  const showPanel = actions.length > 0 || (isOfficer && !assignedTo) || isSupervisor || canChallenge || isActiveLeader;
 
   return (
     <section className="space-y-4 rounded-xl border bg-card p-6 shadow-card">
@@ -185,6 +211,28 @@ export function CaseActions(props: {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Leader actions */}
+      {isActiveLeader && !["closed","resolution_proposed","under_resolution_review","challenged"].includes(status) && (
+        <div className="border-t pt-4 space-y-2">
+          <p className="text-sm font-medium">Leader actions</p>
+          <Textarea
+            value={leaderNote}
+            onChange={(e) => setLeaderNote(e.target.value)}
+            placeholder="Note (required for resolution, optional for escalation)…"
+            rows={3}
+            maxLength={2000}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={leaderResolve} disabled={leaderBusy}>
+              ✅ Mark as resolved
+            </Button>
+            <Button size="sm" variant="destructive" onClick={leaderEscalate} disabled={leaderBusy}>
+              ⬆️ Escalate to next level
+            </Button>
+          </div>
         </div>
       )}
 

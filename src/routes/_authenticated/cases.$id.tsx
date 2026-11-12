@@ -68,9 +68,10 @@ function CasePage() {
   if (!data?.c) return <p>Case not found or you don't have access.</p>;
   const c = data.c;
 
-  const isOwner    = c.citizen_id === user.id;
-  const isOfficer  = me?.roles.includes("officer") ?? false;
+  const isOwner      = c.citizen_id === user.id;
+  const isOfficer    = me?.roles.includes("officer") ?? false;
   const isSupervisor = me?.isSupervisor ?? false;
+  const isLeader     = me?.roles.some(r => ["umudugudu_leader","akagari_leader","umurenge_leader","akarere_leader","intara_leader"].includes(r)) ?? false;
 
   const area = c.areas as { province: string; district: string; sector: string; cell?: string; village?: string } | null;
   const locationStr = [area?.village, area?.cell, area?.sector, area?.district]
@@ -129,6 +130,8 @@ function CasePage() {
             isOwner={isOwner}
             isOfficer={isOfficer}
             isSupervisor={isSupervisor}
+            isLeader={isLeader}
+            currentLeaderId={c.current_leader_id ?? null}
           />
 
           {/* Timeline */}
