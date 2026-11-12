@@ -109,7 +109,8 @@ function ReportPage() {
       .single();
     if (error || !c) {
       setBusy(false);
-      return void toast.error("Could not submit your report. Please try again.");
+      console.error("Submit error:", error);
+      return void toast.error(error?.message ?? "Could not submit your report. Please try again.");
     }
     for (const f of files) {
       const path = `${c.id}/${crypto.randomUUID()}-${f.name.replace(/[^\w.-]/g, "_")}`;
