@@ -5,9 +5,11 @@ import { toast } from "sonner";
 import { FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CaseActions } from "@/components/CaseActions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { STATUS_LABEL, formatDate } from "@/lib/hanohub";
+import { useMe } from "@/lib/use-me";
 
 export const Route = createFileRoute("/_authenticated/cases/$id")({
   head: () => ({ meta: [{ title: "Case details — HanoHub" }] }),
@@ -20,11 +22,15 @@ function CasePage() {
   const qc = useQueryClient();
   const [msg, setMsg] = useState("");
 
+  const { data: me } = useMe(user.id);
+
   const { data, isLoading } = useQuery({
     queryKey: ["case", id],
     queryFn: async () => {
       const [c, h, m, e] = await Promise.all([
-        supabase.from("complaints").select("*, categories(name), areas(province, district, sector)").eq("id", id).maybeSingle(),
+        supabase.from("complaints")
+          .select("*, categories(name), areas(province, district, sector, cell, village)")
+          .eq("id", id).maybeSingle(),
         supabase.from("status_history").select("*").eq("complaint_id", id).order("created_at"),
         supabase.from("messages").select("*").eq("complaint_id", id).order("created_at"),
         supabase.from("evidence").select("*").eq("complaint_id", id).order("created_at"),
@@ -34,7 +40,12 @@ function CasePage() {
         const { data: p } = await supabase.from("profiles").select("full_name").eq("id", c.data.assigned_officer_id).maybeSingle();
         officer = p?.full_name ?? null;
       }
-      return { c: c.data, history: h.data ?? [], messages: m.data ?? [], evidence: e.data ?? [], officer };
+      let leader: string | null = null;
+      if (c.data?.current_leader_id) {
+        const { data: p } = await supabase.from("profiles").select("full_name").eq("id", c.data.current_leader_id).maybeSingle();
+        leader = p?.full_name ?? null;
+      }
+      return { c: c.data, history: h.data ?? [], messages: m.data ?? [], evidence: e.data ?? [], officer, leader };
     },
   });
 
@@ -57,8 +68,18 @@ function CasePage() {
   if (!data?.c) return <p>Case not found or you don't have access.</p>;
   const c = data.c;
 
+  const isOwner    = c.citizen_id === user.id;
+  const isOfficer  = me?.roles.includes("officer") ?? false;
+  const isSupervisor = me?.isSupervisor ?? false;
+
+  const area = c.areas as { province: string; district: string; sector: string; cell?: string; village?: string } | null;
+  const locationStr = [area?.village, area?.cell, area?.sector, area?.district]
+    .filter(Boolean).join(", ");
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+
+      {/* Header card */}
       <div className="rounded-xl border bg-card p-6 shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -67,19 +88,23 @@ function CasePage() {
           </div>
           <StatusBadge status={c.status} />
         </div>
-        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-4">
+        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div><dt className="text-muted-foreground">Category</dt><dd>{c.categories?.name}</dd></div>
-          <div><dt className="text-muted-foreground">Location</dt><dd>{c.areas?.district}, {c.areas?.sector}{c.location_detail ? ` · ${c.location_detail}` : ""}</dd></div>
-          <div><dt className="text-muted-foreground">Assigned officer</dt><dd>{data.officer ?? "Not yet assigned"}</dd></div>
+          <div><dt className="text-muted-foreground">Location</dt><dd>{locationStr || "—"}{c.location_detail ? ` · ${c.location_detail}` : ""}</dd></div>
+          <div><dt className="text-muted-foreground">Assigned officer</dt><dd>{data.officer ?? "Not assigned"}</dd></div>
+          <div><dt className="text-muted-foreground">Current leader</dt><dd>{data.leader ?? "Not assigned"}</dd></div>
+          <div><dt className="text-muted-foreground">Level</dt><dd className="capitalize">{c.current_level ?? "—"}</dd></div>
           <div><dt className="text-muted-foreground">Submitted</dt><dd>{formatDate(c.created_at)}</dd></div>
         </dl>
         <p className="mt-5 whitespace-pre-wrap text-sm">{c.description}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+
+        {/* Communication */}
         <section className="rounded-xl border bg-card p-6 shadow-card lg:col-span-2">
           <h2 className="font-semibold">Communication</h2>
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-4 space-y-3 max-h-72 overflow-y-auto">
             {data.messages.length === 0 && <li className="text-sm text-muted-foreground">No messages yet.</li>}
             {data.messages.map((m) => (
               <li key={m.id} className={m.author_id === user.id ? "ml-8 rounded-lg bg-accent p-3" : "mr-8 rounded-lg bg-muted p-3"}>
@@ -93,10 +118,24 @@ function CasePage() {
             <Button onClick={send} size="sm">Send</Button>
           </div>
         </section>
+
         <div className="space-y-6">
+          {/* Actions — the key part that was missing! */}
+          <CaseActions
+            caseId={id}
+            status={c.status}
+            assignedTo={c.assigned_officer_id ?? null}
+            userId={user.id}
+            isOwner={isOwner}
+            isOfficer={isOfficer}
+            isSupervisor={isSupervisor}
+          />
+
+          {/* Timeline */}
           <section className="rounded-xl border bg-card p-6 shadow-card">
             <h2 className="font-semibold">Timeline</h2>
             <ol className="mt-4 space-y-4 border-l pl-4">
+              {data.history.length === 0 && <li className="text-sm text-muted-foreground">No history yet.</li>}
               {data.history.map((h) => (
                 <li key={h.id} className="text-sm">
                   <p className="font-medium">{STATUS_LABEL[h.to_status]}</p>
@@ -106,6 +145,8 @@ function CasePage() {
               ))}
             </ol>
           </section>
+
+          {/* Evidence */}
           <section className="rounded-xl border bg-card p-6 shadow-card">
             <h2 className="font-semibold">Evidence</h2>
             {data.evidence.length === 0 ? (
@@ -115,7 +156,8 @@ function CasePage() {
                 {data.evidence.map((ev) => (
                   <li key={ev.id}>
                     <button onClick={() => openFile(ev.file_path)} className="flex items-center gap-2 text-left text-sm text-secondary hover:underline">
-                      <FileText className="h-4 w-4 shrink-0" /> {ev.file_name}{ev.version > 1 ? ` (v${ev.version})` : ""}
+                      <FileText className="h-4 w-4 shrink-0" />
+                      {ev.file_name}{ev.version > 1 ? ` (v${ev.version})` : ""}
                     </button>
                   </li>
                 ))}
