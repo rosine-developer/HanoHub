@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, FilePlus2, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X, Landmark } from "lucide-react";
+import { Bell, FilePlus2, LayoutDashboard, LogOut, Megaphone, Menu, Settings, ShieldCheck, Users, X, Landmark } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -21,8 +21,9 @@ const LEADER_ROLES = ["umudugudu_leader","akagari_leader","umurenge_leader","aka
 const NAV = [
   { to: "/dashboard",   label: "Dashboard",          icon: LayoutDashboard, roles: undefined },
   { to: "/report",      label: "Report an issue",     icon: FilePlus2,       roles: undefined },
-  { to: "/leader",      label: "Leader Dashboard",    icon: Landmark,        roles: LEADER_ROLES },
-  { to: "/cases",       label: "Case management",     icon: Users,           roles: ["officer","supervisor","admin"] },
+  { to: "/leader",         label: "Leader Dashboard",    icon: Landmark,        roles: LEADER_ROLES },
+  { to: "/announcements",  label: "Announcements",       icon: Megaphone,       roles: undefined },
+  { to: "/cases",          label: "Case management",     icon: Users,           roles: ["officer","supervisor","admin"] },
   { to: "/supervisor",  label: "Supervisor",          icon: ShieldCheck,     roles: ["supervisor","admin"] },
   { to: "/admin",       label: "Administration",      icon: Settings,        roles: ["admin"] },
 ] as const;
