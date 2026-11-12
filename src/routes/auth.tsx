@@ -89,10 +89,11 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen items-center justify-center bg-[#F5F7FA] p-4">
+      <div className="flex w-full max-w-4xl overflow-hidden rounded-2xl shadow-2xl border border-[#E2E8F0]">
 
       {/* ── Left panel — image + quote ── */}
-      <div className="relative hidden lg:flex lg:w-5/12 xl:w-1/2 flex-col justify-between overflow-hidden bg-primary-deep">
+      <div className="relative hidden md:flex md:w-5/12 flex-col justify-between overflow-hidden bg-primary-deep">
         {/* Background gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#102A43] via-[#163B65] to-[#0F766E] opacity-95" />
 
@@ -134,11 +135,11 @@ function AuthPage() {
       </div>
 
       {/* ── Right panel — form ── */}
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 bg-[#F5F7FA]">
-        <div className="w-full max-w-md">
+      <div className="flex flex-1 flex-col items-center justify-center px-8 py-10 bg-white">
+        <div className="w-full max-w-sm">
 
           {/* Mobile logo */}
-          <Link to="/" className="lg:hidden text-2xl font-bold text-primary block mb-8">
+          <Link to="/" className="md:hidden text-2xl font-bold text-primary block mb-8">
             Hano<span className="text-secondary">Hub</span>
           </Link>
 
@@ -258,7 +259,7 @@ function AuthPage() {
                   <div className="w-full border-t border-[#E2E8F0]" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-[#F5F7FA] px-3 text-muted-foreground">or</span>
+                  <span className="bg-white px-3 text-muted-foreground">or</span>
                 </div>
               </div>
 
@@ -303,6 +304,7 @@ function AuthPage() {
           )}
         </div>
       </div>
+      </div>{/* end card */}
     </div>
   );
 }
